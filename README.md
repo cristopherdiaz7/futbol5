@@ -36,12 +36,12 @@ O:
 ```
 
 **Comandos cliente (ejemplos)**
-- `ayuda` : muestra ayuda.
-- `ver` : lista reservas y turnos disponibles.
-- `reservar 2025-12-04 18:00 MiEquipo 10` : reservar (fecha hora, nombre equipo, cant jugadores).
-- `cancelar <id>` : cancela una reserva por su id.
-- `salir` : cierra el cliente.
+===== CLIENTE FUTBOL 5 =====
+1. Ver reservas
+2. Reservar
+3. Cancelar reserva por ID
+4. Cancelar todas por usuario
+0. Salir
 
-Si quieres, adapto el cliente para usar interfaz gráfica o para desplegar en red dentro de la facultad.
 
 ***
