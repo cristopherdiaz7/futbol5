@@ -9,8 +9,14 @@ PORT = 5000
 
 
 def send_request(sock_file, req: dict) -> dict:
-    sock_file.write(json.dumps(req, ensure_ascii=False) + "\n")
-    sock_file.flush()
+    try:
+        sock_file.write(json.dumps(req, ensure_ascii=False) + "\n")
+        sock_file.flush()
+    except ConnectionResetError:
+        return {"ok": False, "error": "Conexión cerrada por el servidor"}
+    except Exception as e:
+        return {"ok": False, "error": f"Error enviando petición: {e}"}
+
     resp_line = sock_file.readline()
     if not resp_line:
         return {"ok": False, "error": "No response from server"}
@@ -24,9 +30,9 @@ def print_help():
     print("Comandos disponibles:")
     print("  ayuda                     - muestra esta ayuda")
     print("  ver                       - ver reservas actuales")
-    print("  reservar <fecha> <hora> \"nombre equipo\" <jugadores> - reservar turno")
-    print("     ejemplo: reservar 2025-12-04 18:00 \"Mi Equipo\" 10")
-    print("  cancelar <id>             - cancelar reserva por id")
+    print("  reservar <fecha> <hora> \"nombre equipo\" - reservar turno (jugadores = 10)")
+    print("     ejemplo: reservar 2025-12-04 18:00 \"Mi Equipo\"")
+    print("  cancelar                  - cancelar una de tus reservas (te mostrará las tuyas para elegir)")
     print("  salir                     - cerrar cliente")
 
 
@@ -40,10 +46,14 @@ def validate_slot(slot: str) -> bool:
 
 
 def repl(sock_file):
-    print("Cliente chatbot conectado. Escribe 'ayuda' para ver comandos.")
+    # Ask for user name immediately when the client starts
+    username = input('Ingrese su nombre de usuario: ').strip()
+    if not username:
+        username = 'anonimo'
+    print(f"Hola, {username}. Escribe 'ayuda' para ver comandos.")
     while True:
         try:
-            text = input('> ').strip()
+            text = input(f'{username}> ').strip()
         except (EOFError, KeyboardInterrupt):
             print('\nCerrando cliente')
             break
@@ -57,7 +67,7 @@ def repl(sock_file):
             print_help()
             continue
         if action == 'list':
-            req = {"action": "list"}
+            req = {"action": "list", "user": username}
             resp = send_request(sock_file, req)
             if resp.get('ok'):
                 items = resp.get('bookings', [])
@@ -66,36 +76,64 @@ def repl(sock_file):
                 else:
                     print('Reservas:')
                     for b in items:
-                        print(f"- id: {b.get('id')} | slot: {b.get('slot')} | equipo: {b.get('team')} | jugadores: {b.get('players')}")
-            else:
-                print('Error:', resp.get('error'))
-            continue
-        if action == 'reserve':
-            slot = parsed.get('slot')
-            team = parsed.get('team')
-            players = parsed.get('players', 10)
-            if not validate_slot(slot):
-                print('Formato de slot inválido. Usar YYYY-MM-DD HH:MM')
-                continue
-            req = {"action": "reserve", "slot": slot, "team": team, "players": players}
-            resp = send_request(sock_file, req)
-            if resp.get('ok'):
-                b = resp.get('booking')
-                print('Reserva creada:', b.get('id'))
+                        user = b.get('user') if b.get('user') else '(sin usuario)'
+                        # Do not display internal id; show reservation, team and user
+                        print(f"- Reserva: {b.get('slot')} | equipo: {b.get('team')} | jugador/es: {b.get('players')} | user: {user}")
             else:
                 print('Error:', resp.get('error'))
             continue
         if action == 'cancel':
-            booking_id = parsed.get('id')
-            if not booking_id:
-                print('Usar: cancelar <id>')
+            # interactive cancel: get user's bookings and ask which one to cancel
+            resp_list = send_request(sock_file, {"action": "list", "user": username})
+            if not resp_list.get('ok'):
+                print('Error:', resp_list.get('error'))
                 continue
-            req = {"action": "cancel", "id": booking_id}
+            items = resp_list.get('bookings', [])
+            # filter only bookings that belong to this user
+            user_bookings = [b for b in items if b.get('user') == username]
+            if not user_bookings:
+                print('No tienes reservas para cancelar.')
+                continue
+            print('Tus reservas:')
+            for idx, b in enumerate(user_bookings, start=1):
+                print(f"  {idx}) {b.get('slot')} | {b.get('team')}")
+            choice = input('Elige el número de la reserva a cancelar (o Enter para cancelar): ').strip()
+            if not choice:
+                print('Cancelación abortada')
+                continue
+            try:
+                ci = int(choice)
+            except Exception:
+                print('Opción inválida')
+                continue
+            if not (1 <= ci <= len(user_bookings)):
+                print('Opción fuera de rango')
+                continue
+            to_cancel = user_bookings[ci - 1]
+            booking_id = to_cancel.get('id')
+            req = {"action": "cancel", "id": booking_id, "user": username}
             resp = send_request(sock_file, req)
-            if resp.get('ok'):
-                print('Reserva cancelada:', resp.get('booking', {}).get('id'))
-            else:
+            if not resp.get('ok'):
                 print('Error:', resp.get('error'))
+            else:
+                b = resp.get('booking')
+                print(f"Reserva cancelada: {b.get('slot')} | equipo: {b.get('team')}")
+                continue
+            req = {"action": "cancel", "id": booking_id, "user": username}
+            resp = send_request(sock_file, req)
+            if not resp.get('ok'):
+                print('Error:', resp.get('error'))
+            else:
+                if 'booking' in resp:
+                    b = resp.get('booking')
+                    print(f"Reserva cancelada: {b.get('slot')} | equipo: {b.get('team')}")
+                elif 'removed' in resp:
+                    removed = resp.get('removed', [])
+                    print(f"Se cancelaron {len(removed)} reserva(s) para el usuario {username}:")
+                    for b in removed:
+                        print(f" - {b.get('slot')} | {b.get('team')}")
+                else:
+                    print('Cancelación procesada')
             continue
         if action == 'invalid':
             print(parsed.get('error'))

@@ -31,16 +31,19 @@ def handle_client(conn: socket.socket, addr, service: ReservationService):
                 slot = req.get('slot')
                 team = req.get('team')
                 players = req.get('players', 10)
+                user = req.get('user')
                 if not slot or not team:
                     resp = {"ok": False, "error": "Faltan campos: slot o team"}
                 else:
-                    resp = service.reserve(slot, team, players)
+                    resp = service.reserve(slot, team, players, user)
             elif action == 'cancel':
                 booking_id = req.get('id')
-                if not booking_id:
-                    resp = {"ok": False, "error": "Falta id"}
+                user = req.get('user')
+                if booking_id:
+                    resp = service.cancel(booking_id, user)
                 else:
-                    resp = service.cancel(booking_id)
+                    # cancel all bookings for this user
+                    resp = service.cancel_by_user(user)
             elif action == 'help':
                 resp = {"ok": True, "help": "Comandos: list, reserve, cancel"}
             else:

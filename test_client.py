@@ -15,10 +15,10 @@ def main():
     with socket.create_connection((HOST, PORT)) as sock:
         print('Conectado al servidor')
         print('Listando reservas (inicial):')
-        print(send_and_recv(sock, {"action":"list"}))
+        print(send_and_recv(sock, {"action":"list", "user":"testbot"}))
 
         print('Intentando crear reserva de prueba...')
-        resp = send_and_recv(sock, {"action":"reserve", "slot":"2025-12-10 18:00", "team":"EquipoPrueba", "players":10})
+        resp = send_and_recv(sock, {"action":"reserve", "slot":"2025-12-10 18:00", "team":"EquipoPrueba", "players":10, "user":"testbot"})
         print('Respuesta reserva:', resp)
         try:
             r = json.loads(resp)

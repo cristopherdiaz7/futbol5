@@ -8,7 +8,7 @@ from typing import List, Dict, Optional
 class BookingManager:
     def __init__(self, path: str = "data/bookings.json"):
         self.path = path
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self.bookings: List[Dict] = []
         self._load()
 
@@ -40,7 +40,7 @@ class BookingManager:
                     return b
         return None
 
-    def reserve(self, slot: str, team: str, players: int) -> Dict:
+    def reserve(self, slot: str, team: str, players: int, user: str = None) -> Dict:
         with self.lock:
             if self.find_by_slot(slot) is not None:
                 return {"ok": False, "error": "Turno ya reservado para ese horario"}
@@ -50,18 +50,44 @@ class BookingManager:
                 "team": team,
                 "players": int(players),
             }
+            if user:
+                booking["user"] = user
+            
             self.bookings.append(booking)
             self._save()
             return {"ok": True, "booking": booking}
 
-    def cancel(self, booking_id: str) -> Dict:
+    def cancel(self, booking_id: str, user: str = None) -> Dict:
         with self.lock:
             for i, b in enumerate(self.bookings):
                 if b.get("id") == booking_id:
+                    # if reservation has a user and a user is provided, enforce match
+                    owner = b.get("user")
+                    if owner and user and owner != user:
+                        return {"ok": False, "error": "No autorizado: sólo el creador puede cancelar esta reserva"}
+                    if owner and not user:
+                        return {"ok": False, "error": "No autorizado: se requiere usuario para cancelar esta reserva"}
                     removed = self.bookings.pop(i)
                     self._save()
                     return {"ok": True, "booking": removed}
         return {"ok": False, "error": "ID de reserva no encontrado"}
+
+    def cancel_by_user(self, user: str) -> Dict:
+        if not user:
+            return {"ok": False, "error": "Se requiere usuario para cancelar reservas personales"}
+        removed = []
+        with self.lock:
+            remaining = []
+            for b in self.bookings:
+                if b.get('user') == user:
+                    removed.append(b)
+                else:
+                    remaining.append(b)
+            if not removed:
+                return {"ok": False, "error": "No se encontraron reservas del usuario"}
+            self.bookings = remaining
+            self._save()
+        return {"ok": True, "removed": removed}
 
 
 if __name__ == "__main__":
