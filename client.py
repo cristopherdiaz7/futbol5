@@ -19,24 +19,20 @@ def send_request(sock_file, req: dict) -> dict:
 
 
 def print_help():
-    print("Comandos disponibles:")
-    print("  ayuda                     - muestra esta ayuda")
-    print("  ver                       - ver reservas actuales")
-    print("  reservar                  - iniciar reserva paso a paso (recomendado)")
-    print("     o: reservar <fecha> <hora> <nombre>  - atajo rápido (jugadores = 10)")
-    print("     ejemplo interactivo:")
-    print("       reservar    -> luego te pide fecha, hora, nombre del equipo y jugadores")
-    print("     ejemplo atajo:")
-    print("       reservar 2025-12-04 18:00 \"Mi Equipo\"")
-    print("  cancelar                  - cancelar una de tus reservas (te mostrará las tuyas para elegir)")
-    print("  salir                     - cerrar cliente")
+    print("--- Menu (Cancha Fútbol 5) ---")
+    print("  menu                     - muestra este menú")
+    print("  ver reservas (comando: ver) - ver reservas actuales")
+    print("  reservar                 - reservar turno (te guiará paso a paso)")
+    print("  cancelar                 - cancelar una de tus reservas (te mostrará las tuyas para elegir)")
+    print("  salir                    - cerrar cliente")
 
 
 def repl(sock_file):
     username = input('Ingrese su nombre de usuario: ').strip()
     if not username:
         username = 'anonimo'
-    print(f"Hola, {username}. Escribe 'ayuda' para ver comandos.")
+    print(f"Bienvenido a cancha futbol5, {username}.")
+    print_help()
     while True:
         try:
             cmd = input('> ').strip()
@@ -77,8 +73,9 @@ def repl(sock_file):
                 team = parts[3]
                 players = 10
             else:
-                # interactive prompts with available-hours view
+                # interactive prompts: ask date, show available slots, choose one
                 print('Reserva interactiva: vas a ingresar los datos del turno.')
+                print("Formato: Fecha `YYYY-MM-DD`. Se mostrará la hora como `HH:MM` (ej. 15:00).\nEjemplo completo de turno: `2025-12-31 15:00`. El nombre del equipo puede contener espacios.")
                 fecha = input('Fecha (YYYY-MM-DD): ').strip()
 
                 # Ask server for existing bookings to show occupied hours for that date
@@ -88,7 +85,6 @@ def repl(sock_file):
                 except Exception:
                     existing = []
 
-                # allowed hours 14:00..23:00
                 allowed_hours = [f"{h:02d}:00" for h in range(14, 24)]
                 occupied = set()
                 for b in existing:
@@ -98,22 +94,27 @@ def repl(sock_file):
                         if len(parts) >= 2:
                             occupied.add(parts[1])
 
-                print('Horarios para', fecha)
-                for h in allowed_hours:
-                    mark = '(ocupado)' if h in occupied else '(disponible)'
-                    print(f"  {h} {mark}")
+                available = [h for h in allowed_hours if h not in occupied]
+                if not available:
+                    print('Sin turnos disponibles')
+                    continue
 
-                # ask for hour and validate
-                while True:
-                    hora = input('Elige una hora de las listadas (HH:MM): ').strip()
-                    if hora not in allowed_hours:
-                        print('Hora inválida — debe ser una hora completa entre 14:00 y 23:00.')
+                print('Turnos disponibles:')
+                for idx, h in enumerate(available, start=1):
+                    print(f"  {idx}) {h}")
+                choice = input('Elige el número del turno a reservar (o Enter para cancelar): ').strip()
+                if not choice:
+                    print('Reserva cancelada')
+                    continue
+                try:
+                    ci = int(choice)
+                    if not (1 <= ci <= len(available)):
+                        print('Opción fuera de rango')
                         continue
-                    if hora in occupied:
-                        print('Ese horario ya está ocupado, elige otro.')
-                        continue
-                    break
-
+                except Exception:
+                    print('Opción inválida')
+                    continue
+                hora = available[ci - 1]
                 team = input('Nombre del equipo (puede tener espacios): ').strip()
                 # players fixed to 10 (futbol 5)
                 players = 10
@@ -142,7 +143,7 @@ def repl(sock_file):
             items = resp_list.get('bookings', [])
             user_bookings = [b for b in items if b.get('user') == username]
             if not user_bookings:
-                print('No tienes reservas para cancelar.')
+                print('Sin turnos disponibles')
                 continue
             print('Tus reservas:')
             for idx, b in enumerate(user_bookings, start=1):

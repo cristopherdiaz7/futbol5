@@ -26,6 +26,8 @@ def parse_text_command(text: str) -> Dict:
         return {"action": "list"}
     if cmd in ("ayuda", "help"):
         return {"action": "help"}
+    if cmd == 'menu':
+        return {"action": "help"}
     if cmd == "reservar":
         # minimal parsing: reservar <fecha> <hora> <nombre>
         # players is fixed to 10 by default
@@ -39,8 +41,9 @@ def parse_text_command(text: str) -> Dict:
         players = 10
         return {"action": "reserve", "slot": slot, "team": team, "players": players}
     if cmd == "cancelar":
+        # allow 'cancelar' alone (interactive) or 'cancelar <id>'
         if len(parts) < 2:
-            return {"action": "invalid", "error": "Uso: cancelar <id>"}
+            return {"action": "cancel"}
         return {"action": "cancel", "id": parts[1]}
     return {"action": "unknown", "text": text}
 
