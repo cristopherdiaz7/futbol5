@@ -1,11 +1,13 @@
+import os
 import socket
 import threading
 import json
 from services.reservation_service import ReservationService
 
 
-HOST = '0.0.0.0'
-PORT = 5000
+# Read host/port from environment to support Docker; default binds to 0.0.0.0
+HOST = os.environ.get('HOST', '0.0.0.0')
+PORT = int(os.environ.get('PORT', '5000'))
 
 
 def handle_client(conn: socket.socket, addr, service: ReservationService):

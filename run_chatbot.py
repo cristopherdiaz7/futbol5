@@ -5,6 +5,15 @@ Uso:
   python run_chatbot.py --mode client
 """
 import argparse
+import os
+
+# Optionally load .env in local development if python-dotenv is installed
+try:
+    from dotenv import load_dotenv
+except Exception:
+    load_dotenv = None
+if load_dotenv:
+    load_dotenv()
 
 
 def main():

@@ -1,9 +1,11 @@
+import os
 import socket
 import json
 import sys
 
-HOST = '127.0.0.1'
-PORT = 5000
+# HOST and PORT can be provided via environment variables (useful for Docker)
+HOST = os.environ.get('HOST', '127.0.0.1')
+PORT = int(os.environ.get('PORT', '5000'))
 
 
 def send_request(sock_file, req: dict) -> dict:

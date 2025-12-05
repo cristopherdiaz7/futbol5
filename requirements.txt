@@ -1,1 +1,2 @@
-# No external packages required; uses Python standard library
+# Optional dependency for loading .env during local development
+python-dotenv>=1.0.0

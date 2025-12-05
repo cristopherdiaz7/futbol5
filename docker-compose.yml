@@ -1,0 +1,21 @@
+services:
+  server:
+    container_name: futbol5-server
+    build: .
+    ports:
+      - "${PORT}:${PORT}"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    command: ["python", "run_chatbot.py", "--mode", "server"]
+  client:
+    build: .
+    depends_on:
+      - server
+    stdin_open: true
+    tty: true
+    env_file:
+      - .env
+    entrypoint: ["python", "run_chatbot.py", "--mode", "client"]

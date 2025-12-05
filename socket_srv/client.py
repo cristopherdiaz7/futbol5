@@ -1,3 +1,4 @@
+import os
 import socket
 import json
 from datetime import datetime
@@ -10,8 +11,8 @@ YELLOW = "\033[93m"
 RED = "\033[91m"
 RESET = "\033[0m"
 
-HOST = "127.0.0.1"
-PORT = 5000
+HOST = os.environ.get('HOST', '127.0.0.1')
+PORT = int(os.environ.get('PORT', '5000'))
 
 
 def send_request(action: str, payload: dict = None):
