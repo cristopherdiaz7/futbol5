@@ -105,12 +105,38 @@ def main():
                 "id": booking_id,
                 "user": user
             })
-            pretty_print(res)
+            # Custom message for cancel action
+            print("\n" + CYAN + "======= RESPUESTA DEL SERVIDOR =======" + RESET)
+            if res.get("ok"):
+                print(GREEN + "✔ Operación exitosa" + RESET)
+                if "booking" in res:
+                    b = res["booking"]
+                    print(f"{GREEN}¡Turno cancelado correctamente!{RESET}\n")
+                    print(f"{YELLOW}Fecha/Hora:{RESET} {b['slot']}")
+                    print(f"{YELLOW}Equipo:{RESET} {b['team']}")
+                else:
+                    print(GREEN + "✔ Cancelación completada." + RESET)
+            else:
+                print(RED + "❌ Error: " + RESET + str(res.get("error", "Error desconocido")))
+            print(CYAN + "======================================\n" + RESET)
 
         elif op == "4":
             user = input("Usuario: ").strip()
             res = send_request("cancel", {"user": user})
-            pretty_print(res)
+            # Custom message for cancel all action
+            print("\n" + CYAN + "======= RESPUESTA DEL SERVIDOR =======" + RESET)
+            if res.get("ok"):
+                print(GREEN + "✔ Operación exitosa" + RESET)
+                if "removed" in res:
+                    removed = res["removed"]
+                    print(f"{GREEN}¡Se cancelaron {len(removed)} turno(s) correctamente!{RESET}\n")
+                    for b in removed:
+                        print(f" - {b['slot']} | {b['team']}")
+                else:
+                    print(GREEN + "✔ Cancelación completada." + RESET)
+            else:
+                print(RED + "❌ Error: " + RESET + str(res.get("error", "Error desconocido")))
+            print(CYAN + "======================================\n" + RESET)
 
         elif op == "0":
             print(YELLOW + "Saliendo del cliente..." + RESET)
